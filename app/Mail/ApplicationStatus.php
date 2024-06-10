@@ -13,12 +13,14 @@ class ApplicationStatus extends Mailable
 {
     use Queueable, SerializesModels;
 
+    public $job;
+
     /**
      * Create a new message instance.
      */
-    public function __construct()
+    public function __construct($job)
     {
-        //
+        $this->job = $job;
     }
 
     /**
@@ -27,7 +29,7 @@ class ApplicationStatus extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Status',
+            subject: 'Application Status at ' . $this->job['company_name'],
         );
     }
 
@@ -37,7 +39,7 @@ class ApplicationStatus extends Mailable
     public function content(): Content
     {
         return new Content(
-            view: 'view.name',
+            view: 'emails.application-status',
         );
     }
 

@@ -86,10 +86,24 @@
             width: 100%;
             border-radius: 8px;
         }
+
+        .message {
+            background: #54B4D3;
+            padding: .5% 2%;
+            color: white;
+            margin: 1%;
+        }
     </style>
 </head>
 
 <body>
+
+    <div class="message">
+        @if(request()->message)
+        The web has not been implemented yet. Please try API.
+        @endif
+    </div>
+
     <div class="container">
         <h1>Job Listing Project</h1>
         <p>

@@ -6,10 +6,12 @@ use Exception;
 use Carbon\Carbon;
 use App\Models\Job;
 use Illuminate\Support\Str;
+use App\Mail\NewApplication;
 use Illuminate\Http\Request;
 use App\Models\JobApplication;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\Api\SendResponseController;
 
@@ -82,8 +84,9 @@ class JobController extends SendResponseController
                 return $this->sendError($validator->errors());
             }
 
-            $job = Job::query()
+            $job = Job::select('job_listings.*', 'users.*')
                 ->where('job_listings.slug', $slug)
+                ->leftjoin('users', 'job_listings.employeer_id', 'users.id')
                 ->first();
 
             if (!$job) {
@@ -118,7 +121,7 @@ class JobController extends SendResponseController
             }
 
             // create new entry for job application
-            $user = JobApplication::create([
+            $jobApplication = JobApplication::create([
                 'job_id' => $job->id,
                 'slug' => Str::uuid(),
                 'employee_id' => Auth::User()->id,
@@ -129,12 +132,16 @@ class JobController extends SendResponseController
                 'skills' => $request->skills,
             ]);
 
-            // send email to associated emploeer. trigger email
+            Mail::to($job->email)
+                ->cc(Auth::user()->email) // Depending updon the needs
+                ->queue(new NewApplication($jobApplication, $job));
+            // added queue so that the api response doenst take longer time.
 
             DB::commit();
             return $this->sendSuccess($job, 'Job Application sent succesfully.', 200);
         } catch (Exception $e) {
             DB::rollBack();
+            return $e->getMessage();
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
