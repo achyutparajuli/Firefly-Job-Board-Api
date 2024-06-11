@@ -172,7 +172,7 @@ class JobController extends SendResponseController
                     'remarks' => $remarks
                 ]);
 
-            $when = now()->addMinutes(1);
+            $when = now()->addMinutes(env("EMAIL_DELAY", 10));
 
             Mail::to($job->employee_email)
                 ->later($when, new ApplicationStatus($job));
