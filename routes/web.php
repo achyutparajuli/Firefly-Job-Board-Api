@@ -15,4 +15,4 @@ use App\Http\Controllers\HomeController;
 |
 */
 
-Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/{token?}', [HomeController::class, 'index'])->name('home');

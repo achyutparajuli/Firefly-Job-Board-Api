@@ -85,9 +85,9 @@ class JobController extends SendResponseController
                 return $this->sendError($validator->errors(), 422);
             }
 
-            $job = Job::select('users.*', 'job_listings.*')
+            $job = Job::select('users.name as employer_name', 'users.email as employer_email', 'job_listings.*')
                 ->where('job_listings.slug', $slug)
-                ->leftjoin('users', 'job_listings.employer_id', 'users.id')
+                ->join('users', 'job_listings.employer_id', 'users.id')
                 ->first();
 
             if (!$job) {
@@ -137,8 +137,7 @@ class JobController extends SendResponseController
                 'skills' => $request->skills,
             ]);
 
-            Mail::to($job->email)
-                ->cc(Auth::user()->email) // Depending updon the needs
+            Mail::to($job->employer_email)
                 ->queue(new NewApplication($jobApplication, $job));
             // added queue so that the api response doenst take longer time.
 

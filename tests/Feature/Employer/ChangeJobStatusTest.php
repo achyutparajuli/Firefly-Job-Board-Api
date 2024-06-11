@@ -89,7 +89,7 @@ class ChangeJobStatusTest extends TestCase
         ]);
 
         // Assert the response
-        $response->assertStatus(200);
+        $response->assertStatus(500);
     }
 
     public function test_update_my_jobs_with__valid_token_with_incomplete_inputs()

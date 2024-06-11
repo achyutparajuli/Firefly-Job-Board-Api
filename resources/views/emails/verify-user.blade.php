@@ -68,10 +68,10 @@
         </div>
         <div class="content">
             <p>Dear
-                <strong>{{ $user['name'] }}</strong>
+                <strong>{{ $name }}</strong>
             </p>
 
-            <p>Thank you for connecting with us.</strong>. {{ route('home') }}
+            <p>Thank you for connecting with us.</strong>.
 
                 <br>Please click the link below to verify your email.
             </p>
@@ -79,7 +79,7 @@
                 <!-- Add more details here on what you want to show in the email -->
             </div>
 
-            <p><a href="{{ $this->link }}" class="button">View Details</a></p>
+            <p><a href="{{ url('/',['uuid' => $verifyToken]) }}" class="button" style="color: white;">View Details</a></p>
         </div>
         <div class="footer">
             <p>Regards,<br>{{ env('APP_NAME') }}</p>

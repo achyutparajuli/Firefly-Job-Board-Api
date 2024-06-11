@@ -155,12 +155,11 @@ class JobController extends SendResponseController
                 return $this->sendError($validator->errors(), 422);
             }
 
-            $job = JobApplication::select('job_listings.*', 'employee.name as employee_name', 'employee.email as employee_email', 'employer.email as employer_email')
+            $job = JobApplication::select('job_listings.*', 'employee.name as employee_name', 'employee.email as employee_email')
                 ->where('employer_id', Auth::User()->id)
                 ->where('job_applications.slug', $slug)
                 ->join('job_listings', 'job_applications.job_id', 'job_listings.id')
                 ->join('users as employee', 'job_applications.employee_id', 'employee.id')
-                ->join('users as employer', 'job_applications.employee_id', 'employer.id')
                 ->first();
 
             if (!$job) {
@@ -176,8 +175,7 @@ class JobController extends SendResponseController
             $when = now()->addMinutes(1);
 
             Mail::to($job->employee_email)
-                ->cc($job->employer_email) // Add CC recipient if needed
-                ->later($when, new ApplicationStatus($job));
+                ->queue(new ApplicationStatus($job));
 
             DB::commit();
             return $this->sendSuccess($request->all(), 'Job updated succesfully.', 200);

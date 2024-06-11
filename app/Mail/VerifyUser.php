@@ -13,15 +13,15 @@ class VerifyUser extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $user, $link;
+    public $verifyToken, $name;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($user)
+    public function __construct($verifyToken, $name)
     {
-        $this->user = $user;
-        $this->link = 'asd';
+        $this->verifyToken = $verifyToken;
+        $this->name = $name;
     }
 
     /**
@@ -30,7 +30,7 @@ class VerifyUser extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Verify User',
+            subject: 'Verify Email ' . env('APP_NAME'),
         );
     }
 

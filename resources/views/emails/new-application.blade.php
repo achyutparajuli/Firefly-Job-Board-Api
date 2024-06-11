@@ -68,7 +68,8 @@
         </div>
         <div class="content">
             <p>Dear
-                <strong>{{ $job['name'] }}</strong>,
+                <strong>User</strong>,
+                <!-- We can add name here  -->
                 <br><strong>{{ $job['company_name'] }}</strong>
             </p>
 

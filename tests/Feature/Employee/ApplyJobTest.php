@@ -73,7 +73,6 @@ class ApplyJobTest extends TestCase
             'cover_letter_file' => UploadedFile::fake()->create('cover_letter.pdf'),
         ]);
 
-        // Assert the response
         $response->assertStatus(200);
     }
 }

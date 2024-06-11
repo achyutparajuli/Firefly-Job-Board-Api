@@ -49,13 +49,14 @@ class RegisterController extends SendResponseController
             ]);
 
             $verifyToken = Str::uuid();
-            $user->update([
-                'verify_token' => $verifyToken,
-                'token_sent_at' => Carbon::now()
-            ]);
+            User::where('email', $request->email)
+                ->update([
+                    'verify_token' => $verifyToken,
+                    'token_sent_at' => Carbon::now()
+                ]);
 
             Mail::to($user->email)
-                ->queue(new VerifyUser($user));
+                ->queue(new VerifyUser($verifyToken, $user->name));
 
             DB::commit();
             return $this->sendSuccess($request->all(), 'User registered succesfully', 201);

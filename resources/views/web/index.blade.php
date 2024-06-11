@@ -99,8 +99,12 @@
 <body>
 
     <div class="message">
-        @if(request()->message)
+        @if(request()->message )
         The web has not been implemented yet. Please try API.
+        @endif
+
+        @if($message)
+        {{ $message }}
         @endif
     </div>
 
