@@ -175,7 +175,7 @@ class JobController extends SendResponseController
             $when = now()->addMinutes(1);
 
             Mail::to($job->employee_email)
-                ->queue(new ApplicationStatus($job));
+                ->later($when, new ApplicationStatus($job));
 
             DB::commit();
             return $this->sendSuccess($request->all(), 'Job updated succesfully.', 200);
