@@ -4,48 +4,33 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Auth\LoginController;
 use App\Http\Controllers\Api\Employee\JobController as EmployeeJobController;
-use App\Http\Controllers\Api\Employeer\JobController as EmployeerJobController;
+use App\Http\Controllers\Api\Employer\JobController as EmployerJobController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
-*/
 
 Route::group(['prefix' => 'v1'], function () {
-    // Register route
     Route::post('/register', [RegisterController::class, 'register']);
-
-    // Login route
     Route::post('/login', [LoginController::class, 'login']);
 
     Route::middleware('auth:api')->group(function () {
-        // Logout route for both type of users.
-        Route::post('/logout', [LoginController::class, 'logout']);
+        Route::post('/logout', [LoginController::class, 'logout']); // common for both user types.
 
 
-        // routes for EMPLOYEER
-        Route::group(['prefix' => 'employeer', 'middleware' => ['employeer']], function () {
-            // Register route
-            Route::post('/jobs', [EmployeerJobController::class, 'store']);
-            Route::get('/jobs', [EmployeerJobController::class, 'index']);
-            Route::put('/jobs/update/{slug}', [EmployeerJobController::class, 'update']);
-            Route::delete('/jobs/delete/{slug}', [EmployeerJobController::class, 'delete']);
-            Route::post('/jobs/status', [EmployeerJobController::class, 'changeStatus']);
+        // routes for EMPLOYER
+        Route::group(['prefix' => 'employer', 'middleware' => ['employer']], function () {
+            Route::post('/jobs', [EmployerJobController::class, 'store']); // create job
+            Route::get('/jobs', [EmployerJobController::class, 'index']); // get my jobs
+            Route::put('/jobs/update/{slug}', [EmployerJobController::class, 'update']); // update my job
+            Route::delete('/jobs/delete/{slug}', [EmployerJobController::class, 'delete']); // delete my job
+            Route::post('/jobs/status', [EmployerJobController::class, 'changeStatus']); // change application status
         });
+
 
         // routes for EMPLOYEE
         Route::group(['prefix' => 'employee', 'middleware' => ['employee']], function () {
-            // Register route
-            Route::get('/jobs', [EmployeeJobController::class, 'index']);
-            Route::get('/active-applications', [EmployeeJobController::class, 'applications']);
-            Route::post('/jobs/apply', [EmployeeJobController::class, 'apply']);
+            Route::get('/jobs', [EmployeeJobController::class, 'index']); // get list of all jobs
+            Route::get('/active-applications', [EmployeeJobController::class, 'applications']); // get my active aplications
+            Route::post('/jobs/apply', [EmployeeJobController::class, 'apply']); // apply for a job
         });
     });
 

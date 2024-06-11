@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Api\Employeer;
+namespace App\Http\Controllers\Api\Employer;
 
 use Exception;
 use App\Models\Job;
@@ -9,7 +9,6 @@ use Illuminate\Http\Request;
 use App\Models\JobApplication;
 use App\Mail\ApplicationStatus;
 use Illuminate\Support\Facades\DB;
-use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -19,7 +18,8 @@ class JobController extends SendResponseController
 {
     public function index(Request $request)
     {
-        $keyword = $request->keyword;
+        $keyword = $request->keyword; // we can use this seperately.
+
         try {
             $jobs = Job::select('job_listings.*')
                 ->addSelect(DB::raw('IF(deadline < NOW(), 1, 0) as expired'))
@@ -30,10 +30,11 @@ class JobController extends SendResponseController
                         $query->orwhere('job_listings.location', 'LIKE', '%' . $keyword . '%');
                     }
                 })
-                ->where('employeer_id', Auth::User()->id)
+                ->where('employer_id', Auth::User()->id)
                 ->withCount('application as total_applications')
+                ->orderBy('id', 'DESC')
                 ->get();
-            return $this->sendSuccess($jobs, 'My Jobs List', 201);
+            return $this->sendSuccess($jobs, 'My Jobs List', 200);
         } catch (Exception $e) {
             return $this->sendError('Error something went wrong! Please try again.');
         }
@@ -54,7 +55,7 @@ class JobController extends SendResponseController
             ]);
 
             if ($validator->fails()) {
-                return $this->sendError($validator->errors());
+                return $this->sendError($validator->errors(), 422);
             }
 
             $job = Job::create([
@@ -67,7 +68,7 @@ class JobController extends SendResponseController
                 'deadline' => $request->deadline,
                 'salary' => $request->salary,
                 'keywords' => $request->keywords,
-                'employeer_id' => Auth::User()->id
+                'employer_id' => Auth::User()->id
             ]);
 
             return $this->sendSuccess($request->all(), 'Job created succesfully', 201);
@@ -78,7 +79,6 @@ class JobController extends SendResponseController
 
     public function update($slug, Request $request)
     {
-        $keyword = $request->keyword;
         try {
             // Validate the request data
             $validator = Validator::make($request->all(), [
@@ -92,13 +92,18 @@ class JobController extends SendResponseController
             ]);
 
             if ($validator->fails()) {
-                return $this->sendError($validator->errors());
+                return $this->sendError($validator->errors(), 422);
             }
 
             $job = Job::query()
                 ->where('slug', $slug)
-                ->where('employeer_id', Auth::User()->id)
+                ->where('employer_id', Auth::User()->id)
                 ->first();
+
+
+            if (!$job) {
+                return $this->sendError('This job doesn`t exists! Please try again.');
+            }
 
             $job->update([
                 'title' => $request->title,
@@ -111,9 +116,6 @@ class JobController extends SendResponseController
                 'salary' => $request->salary,
             ]);
 
-            if (!$job) {
-                return $this->sendError('This job doesn`t exists! Please try again.');
-            }
             return $this->sendSuccess($request->all(), 'Job updated Sucesfully', 200);
         } catch (Exception $e) {
             return $this->sendError('Error something went wrong! Please try again.');
@@ -123,10 +125,12 @@ class JobController extends SendResponseController
     public function delete($slug)
     {
         try {
-            $job = Job::where('employeer_id', Auth::User()->id)->first();
+            $job = Job::where('slug', $slug)->where('employer_id', Auth::User()->id)->first();
+
             if (!$job) {
                 return $this->sendError('This job is not found! Please try again.');
             }
+
             $job->delete();
             return $this->sendSuccess($job, 'Job Deleted Succesfully', 200);
         } catch (Exception $e) {
@@ -138,34 +142,45 @@ class JobController extends SendResponseController
     {
         $slug = $request->slug;
         $remarks = $request->remarks;
-        $status = $request->status;
+        $status = $request->status; // status to be changed
         try {
             DB::beginTransaction();
 
-            $job = JobApplication::select('job_listings.*', 'employee.name as employee_name', 'employee.email as employee_email', 'employeer.email as employeer_email')
-                ->where('employeer_id', Auth::User()->id)
+            $validator = Validator::make($request->all(), [
+                'slug' => 'required|string',
+                'status' => 'required|string',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->sendError($validator->errors(), 422);
+            }
+
+            $job = JobApplication::select('job_listings.*', 'employee.name as employee_name', 'employee.email as employee_email', 'employer.email as employer_email')
+                ->where('employer_id', Auth::User()->id)
                 ->where('job_applications.slug', $slug)
                 ->join('job_listings', 'job_applications.job_id', 'job_listings.id')
                 ->join('users as employee', 'job_applications.employee_id', 'employee.id')
-                ->join('users as employeer', 'job_applications.employee_id', 'employeer.id')
+                ->join('users as employer', 'job_applications.employee_id', 'employer.id')
                 ->first();
-
 
             if (!$job) {
                 return $this->sendError('This job is not found! Please try again.');
             }
 
-            $job->status = $status;
-            $job->remarks = $remarks;
-            $job->save();
-            $when = now()->addMinutes(10);
+            JobApplication::where('slug', $slug)
+                ->update([
+                    'status' => $status,
+                    'remarks' => $remarks
+                ]);
+
+            $when = now()->addMinutes(1);
 
             Mail::to($job->employee_email)
-                ->cc($job->employeer_email) // Add CC recipient if needed
+                ->cc($job->employer_email) // Add CC recipient if needed
                 ->later($when, new ApplicationStatus($job));
 
             DB::commit();
-            return $this->sendSuccess($job, 'Job updated succesfully.', 200);
+            return $this->sendSuccess($request->all(), 'Job updated succesfully.', 200);
         } catch (Exception $e) {
             DB::rollBack();
             return $this->sendError('Error something went wrong! Please try again.');

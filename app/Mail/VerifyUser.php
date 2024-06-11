@@ -9,18 +9,19 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class ApplicationStatus extends Mailable implements ShouldQueue
+class VerifyUser extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $job;
+    public $user, $link;
 
     /**
      * Create a new message instance.
      */
-    public function __construct($job)
+    public function __construct($user)
     {
-        $this->job = $job;
+        $this->user = $user;
+        $this->link = 'asd';
     }
 
     /**
@@ -29,7 +30,7 @@ class ApplicationStatus extends Mailable implements ShouldQueue
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: 'Application Status at ' . $this->job['company_name'],
+            subject: 'Verify User',
         );
     }
 
@@ -39,7 +40,7 @@ class ApplicationStatus extends Mailable implements ShouldQueue
     public function content(): Content
     {
         return new Content(
-            view: 'emails.application-status',
+            view: 'emails.verify-user',
         );
     }
 

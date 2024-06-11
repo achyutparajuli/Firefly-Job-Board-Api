@@ -41,6 +41,7 @@ class JobController extends SendResponseController
                         $query->where('job_listings.company_name', 'LIKE', '%' . $companyName . '%');
                     }
                 })
+                ->where('job_listings.status', 1)
                 ->withCount('application as total_applications')
                 ->get();
             return $this->sendSuccess($jobs, 'All Jobs List', 200);
@@ -81,19 +82,23 @@ class JobController extends SendResponseController
             ]);
 
             if ($validator->fails()) {
-                return $this->sendError($validator->errors());
+                return $this->sendError($validator->errors(), 422);
             }
 
-            $job = Job::select('job_listings.*', 'users.*')
+            $job = Job::select('users.*', 'job_listings.*')
                 ->where('job_listings.slug', $slug)
-                ->leftjoin('users', 'job_listings.employeer_id', 'users.id')
+                ->leftjoin('users', 'job_listings.employer_id', 'users.id')
                 ->first();
 
             if (!$job) {
                 return $this->sendError('This job is not found! Please try again.');
             }
 
-            if (Carbon::parse($job->deadline)->isPast()) {
+            if (!$job->status) {
+                return $this->sendError('This job is not active! Please try again.');
+            }
+
+            if ($job->deadline && Carbon::parse($job->deadline)->isPast()) {
                 return $this->sendError('This job is closed! Please try other jobs.');
             }
 
@@ -138,10 +143,9 @@ class JobController extends SendResponseController
             // added queue so that the api response doenst take longer time.
 
             DB::commit();
-            return $this->sendSuccess($job, 'Job Application sent succesfully.', 200);
+            return $this->sendSuccess($request->all(), 'Job Application sent succesfully.', 200);
         } catch (Exception $e) {
             DB::rollBack();
-            return $e->getMessage();
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }

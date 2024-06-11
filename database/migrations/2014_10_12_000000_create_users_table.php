@@ -17,12 +17,14 @@ return new class extends Migration
             $table->string('email', 100)->unique()->index();
             $table->string('mobile', 10)->unique()->index();
             $table->string('password');
-            $table->boolean('status')->default(1);
+            $table->boolean('status')->default(0);
             $table->longtext('api_token')->nullable();
-            $table->enum('user_type', ['employee', 'employeer']);
+            $table->enum('user_type', ['employee', 'employer']);
             $table->string('job_title');
             $table->rememberToken();
             $table->timestamp('email_verified_at')->nullable();
+            $table->string('verify_token', 120)->nullable();
+            $table->date('token_sent_at')->nullable();
             $table->timestamps();
 
             // We can add other fields as per required.

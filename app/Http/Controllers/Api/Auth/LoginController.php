@@ -23,20 +23,20 @@ class LoginController extends SendResponseController
             ]);
 
             if ($validator->fails()) {
-                return $this->sendError($validator->errors());
+                return $this->sendError($validator->errors(), 422);
             }
 
             $checkUser = User::where('email', $request->email)->first();
             if ($checkUser) {
                 if (!$checkUser->email_verified_at) {
-                    return $this->sendError('Invalid Login. Please verify your email.');
+                    return $this->sendError('Invalid Login. Please verify your email.', 400);
                 } else if (!$checkUser->status) {
-                    return $this->sendError('Invalid Login. Please contact the system admin.');
+                    return $this->sendError('Invalid Login. Please contact the system admin.', 400);
                 }
 
                 if (Hash::check($request->password, $checkUser->password)) {
+                    // if login is success generate api token
                     $token = $checkUser->createToken($checkUser->email)->accessToken;
-                    $token = $token->token;
 
                     $result = [
                         'name' => $checkUser->name,
@@ -53,12 +53,13 @@ class LoginController extends SendResponseController
 
                     return $this->sendSuccess($result, 'Login Succesfull.');
                 } else {
-                    return $this->sendError('The provided password is incorrect.');
+                    return $this->sendError('The provided password is incorrect.', 401);
                 }
             } else {
-                return $this->sendError('The provided email is not registred.');
+                return $this->sendError('The provided email is not registred.', 400);
             }
         } catch (Exception $e) {
+            return $e->getMessage();
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
@@ -66,14 +67,11 @@ class LoginController extends SendResponseController
     public function logout(Request $request)
     {
         try {
-            if (Auth::check()) {
-                // Revoke the token
-                if ($request->user()) {
-                    $request->user()->token()->revoke();
-                }
-                User::where('id', Auth::User()->id)
-                    ->update(['api_token' => NULL]);
-            }
+
+            $request->user()->tokens()->delete();
+
+            User::where('id', Auth::User()->id)
+                ->update(['api_token' => NULL]);
 
             return $this->sendSuccess('', 'Logout Succesfull.');
         } catch (Exception $e) {

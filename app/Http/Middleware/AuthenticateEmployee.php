@@ -18,7 +18,7 @@ class AuthenticateEmployee extends SendResponseController
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::User()->user_type != "employee") {
-            return $this->sendError('You are not eligible to access this page.');
+            return $this->sendError('You are not eligible to access this page.',401);
         }
 
         return $next($request);

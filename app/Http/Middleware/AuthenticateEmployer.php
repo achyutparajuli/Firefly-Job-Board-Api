@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
-class AuthenticateEmployeer extends SendResponseController
+class AuthenticateEmployer extends SendResponseController
 {
     /**
      * Handle an incoming request.
@@ -17,8 +17,8 @@ class AuthenticateEmployeer extends SendResponseController
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::User()->user_type != "employeer") {
-            return $this->sendError('You are not eligible to access this page.');
+        if (Auth::User()->user_type != "employer") {
+            return $this->sendError('You are not eligible to access this page.', 401);
         }
 
         return $next($request);

@@ -30,7 +30,6 @@ class NewApplication extends Mailable
      */
     public function envelope(): Envelope
     {
-        $title = Job::where('id', $this->applicationDetails['job_id'])->first()->title;
         return new Envelope(
             subject: 'New Application Received for ' . $this->job['title'],
         );

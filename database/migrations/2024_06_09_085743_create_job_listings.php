@@ -23,7 +23,7 @@ return new class extends Migration
             $table->date('deadline')->nullable();
             $table->longtext('keywords');
             $table->string('salary', 30)->nullable(); // Assuming its a salary range.
-            $table->foreignId('employeer_id')->constrained('users')->onDelete('cascade');
+            $table->foreignId('employer_id')->constrained('users')->onDelete('cascade');
             $table->timestamps();
         });
     }

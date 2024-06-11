@@ -13,17 +13,18 @@ class Job extends Model
 
     protected $fillable = [
         'title',
+        'status',
         'company_name',
         'location',
         'description',
         'instruction',
         'deadline',
         'salary',
-        'employeer_id',
+        'employer_id',
         'employee_id',
         'instruction',
         'slug',
-        'keywords'
+        'keywords',
     ];
 
     public function application()

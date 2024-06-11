@@ -24,7 +24,7 @@ class SendResponseController extends Controller
         $response = [
             'success' => false,
             'data' => 'null',
-            'message' => $errorMessages,
+            'errors' => $errorMessages,
         ];
         return response()->json($response, $code);
     }
