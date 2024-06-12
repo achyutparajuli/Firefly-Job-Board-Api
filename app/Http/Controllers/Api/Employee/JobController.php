@@ -46,7 +46,6 @@ class JobController extends SendResponseController
                 ->get();
             return $this->sendSuccess($jobs, 'All Jobs List', 200);
         } catch (Exception $e) {
-            return $e->getMessage();
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
