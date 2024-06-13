@@ -57,7 +57,6 @@ class JobController extends SendResponseController
                 ->join('job_listings', 'job_applications.job_id', 'job_listings.id')
                 ->where('job_applications.employee_id', Auth::User()->id)
                 ->where('job_applications.status', 'pending')
-                // for all active submissions, rejected and approved are not active since the action is already done
                 ->get();
             return $this->sendSuccess($jobs, 'All Active Job Applications', 200);
         } catch (Exception $e) {
