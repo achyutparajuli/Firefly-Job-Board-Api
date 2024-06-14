@@ -8,29 +8,34 @@ use App\Http\Controllers\Api\Employer\JobController as EmployerJobController;
 use App\Http\Controllers\Api\Auth\RegisterController;
 
 
-Route::group(['prefix' => 'v1'], function () {
+Route::group(['prefix' => 'v1'], function ()
+{
     Route::post('/register', [RegisterController::class, 'register']);
     Route::post('/login', [LoginController::class, 'login']);
 
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware('auth:api')->group(function ()
+    {
         Route::post('/logout', [LoginController::class, 'logout']); // common for both user types.
 
 
         // routes for EMPLOYER
-        Route::group(['prefix' => 'employer', 'middleware' => ['employer']], function () {
-            Route::post('/jobs', [EmployerJobController::class, 'store']); // create job
-            Route::get('/jobs', [EmployerJobController::class, 'index']); // get my jobs
-            Route::put('/jobs/update/{slug}', [EmployerJobController::class, 'update']); // update my job
-            Route::delete('/jobs/delete/{slug}', [EmployerJobController::class, 'delete']); // delete my job
-            Route::post('/jobs/status', [EmployerJobController::class, 'changeStatus']); // change application status
+        Route::group(['prefix' => 'employer/jobs', 'middleware' => ['employer']], function ()
+        {
+            Route::post('/', [EmployerJobController::class, 'store']); // create job
+            Route::get('/', [EmployerJobController::class, 'index']); // get my jobs
+            Route::put('/update/{slug}', [EmployerJobController::class, 'update']); // update my job
+            Route::delete('/delete/{slug}', [EmployerJobController::class, 'delete']); // delete my job
+            Route::get('/applications', [EmployerJobController::class, 'getJobApplications']); // get the list of job applications for changing its status
+            Route::post('/status', [EmployerJobController::class, 'changeStatus']); // change application status
         });
 
 
         // routes for EMPLOYEE
-        Route::group(['prefix' => 'employee', 'middleware' => ['employee']], function () {
-            Route::get('/jobs', [EmployeeJobController::class, 'index']); // get list of all jobs
+        Route::group(['prefix' => 'employee/jobs', 'middleware' => ['employee']], function ()
+        {
+            Route::get('/', [EmployeeJobController::class, 'index']); // get list of all jobs
             Route::get('/active-applications', [EmployeeJobController::class, 'applications']); // get my active aplications
-            Route::post('/jobs/apply', [EmployeeJobController::class, 'apply']); // apply for a job
+            Route::post('/apply', [EmployeeJobController::class, 'apply']); // apply for a job
         });
     });
 

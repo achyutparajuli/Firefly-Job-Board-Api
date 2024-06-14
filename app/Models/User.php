@@ -23,7 +23,9 @@ class User extends Authenticatable
         'password',
         'job_title',
         'mobile',
-        'user_type'
+        'user_type',
+        'verify_token',
+        'api_token'
     ];
 
     /**

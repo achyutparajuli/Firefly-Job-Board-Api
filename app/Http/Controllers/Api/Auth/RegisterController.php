@@ -18,9 +18,9 @@ class RegisterController extends SendResponseController
 {
     public function register(Request $request)
     {
-        try {
+        try
+        {
             DB::beginTransaction();
-            // Validate the request data
             $validator = Validator::make($request->all(), [
                 'name' => ['required', 'string', 'max:70'],
                 'email' => ['required', 'string', 'email', 'max:100', 'unique:users'],
@@ -33,34 +33,25 @@ class RegisterController extends SendResponseController
                 'job_title' => ['required', 'string'],
             ]);
 
-            if ($validator->fails()) {
+            if ($validator->fails())
+            {
                 return $this->sendError($validator->errors(), 422);
             }
 
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'user_type' => $request->user_type,
-                'job_title' => $request->job_title,
-                'mobile' => $request->mobile,
-                'status' => false, // By default the user is inactive, once they verify their email they will be active
-                // We can add other fields as per required.
-            ]);
+            $validatedData = $validator->validated();
+            $validatedData['status'] = 0;
+            $validatedData['verify_token'] = Str::uuid();
+            $validatedData['token_sent_at'] = Carbon::now();
 
-            $verifyToken = Str::uuid();
-            User::where('email', $request->email)
-                ->update([
-                    'verify_token' => $verifyToken,
-                    'token_sent_at' => Carbon::now()
-                ]);
-
+            $user = User::create($validatedData);
             Mail::to($user->email)
-                ->queue(new VerifyUser($verifyToken, $user->name));
+                ->queue(new VerifyUser($user->verify_token, $user->name));
 
             DB::commit();
             return $this->sendSuccess($request->all(), 'User registered succesfully', 201);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             DB::rollBack();
             return $this->sendError('Error something went wrong! Please try again.');
         }

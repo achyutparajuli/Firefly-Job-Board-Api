@@ -79,7 +79,8 @@
                 <!-- Add more details here on what you want to show in the email -->
             </div>
 
-            <p><a href="{{ url('/',['uuid' => $verifyToken]) }}" class="button" style="color: white;">View Details</a></p>
+            <p><a href="{{ url('/',['uuid' => $verifyToken]) }}" class="button" style="color: white;">Verify Email</a>
+            </p>
         </div>
         <div class="footer">
             <p>Regards,<br>{{ env('APP_NAME') }}</p>

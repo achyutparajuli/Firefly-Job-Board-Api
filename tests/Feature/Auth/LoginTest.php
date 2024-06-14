@@ -32,7 +32,7 @@ class UserLoginTest extends TestCase
             'password' => 'password',
         ]);
 
-        $response->assertStatus(400); // because the user doesnt has verified themself
+        $response->assertStatus(422); // because the user doesnt has verified themself
     }
 
     public function test_user_login_passing_active_status()
@@ -52,7 +52,6 @@ class UserLoginTest extends TestCase
             'email' => 'test' . $num . '@example.com',
             'password' => 'password',
         ]);
-
 
         $response->assertStatus(200); // because the user is verified as we have sent status true
     }
@@ -96,6 +95,6 @@ class UserLoginTest extends TestCase
             'email' => 'test' . $num . '@example.com',
             'password' => 'password',
         ]);
-        $response->assertStatus(400);
+        $response->assertStatus(422);
     }
 }

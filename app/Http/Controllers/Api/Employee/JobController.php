@@ -19,132 +19,96 @@ class JobController extends SendResponseController
 {
     public function index(Request $request)
     {
-        $keywords = $request->keywords;
-        $companyName = $request->company_name;
-        $location = $request->location;
-        try {
-            $jobs = Job::select('job_listings.*')
-                ->addSelect(DB::raw('IF(deadline < NOW(), 1, 0) as expired'))
-                ->where(function ($query) use ($keywords) {
-                    if ($keywords != '') {
-                        $query->where('job_listings.title', 'LIKE', '%' . $keywords . '%');
-                        $query->orwhere('job_listings.keywords', 'LIKE', '%' . $keywords . '%');
-                    }
-                })
-                ->where(function ($query) use ($location) {
-                    if ($location != '') {
-                        $query->where('job_listings.location', 'LIKE', '%' . $location . '%');
-                    }
-                })
-                ->where(function ($query) use ($companyName) {
-                    if ($companyName != '') {
-                        $query->where('job_listings.company_name', 'LIKE', '%' . $companyName . '%');
-                    }
-                })
-                ->where('job_listings.status', 1)
-                ->withCount('application as total_applications')
-                ->get();
+        try
+        {
+            $jobs = Job::fetchJobsQuery($request->all())->get();
+
             return $this->sendSuccess($jobs, 'All Jobs List', 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function applications(Request $request)
     {
-        try {
-            $jobs = JobApplication::select('job_listings.*', 'job_applications.*')
-                ->join('job_listings', 'job_applications.job_id', 'job_listings.id')
-                ->where('job_applications.employee_id', Auth::User()->id)
-                ->where('job_applications.status', 'pending')
-                // for all active submissions, rejected and approved are not active since the action is already done
-                ->get();
-            return $this->sendSuccess($jobs, 'All Active Job Applications', 200);
-        } catch (Exception $e) {
+        try
+        {
+            $request->merge(['employee_id' => Auth::User()->id]);
+            $jobApplication = JobApplication::fetchJobsApplicationQuery($request->all())->get();
+
+            return $this->sendSuccess($jobApplication, 'All Active Job Applications', 200);
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function apply(Request $request)
     {
-        $slug = $request->slug;
-        try {
+        $validator = Validator::make($request->all(), [
+            'slug' => 'required|string',
+            'experience' => 'required|string',
+            'skills' => 'required|string',
+            'cv' => 'required|file|mimes:pdf',
+            'cover_letter_file' => 'required_without:cover_letter_content|file|mimes:pdf|nullable',
+            'cover_letter_content' => 'required_without:cover_letter_file|string|nullable',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->sendError($validator->errors(), 422);
+        }
+
+        try
+        {
             DB::beginTransaction();
 
-            $validator = Validator::make($request->all(), [
-                'slug' => 'required|string',
-                'experience' => 'required|string',
-                'skills' => 'required|string',
-                'cv' => 'required|file|mimes:pdf',
-                'cover_letter_file' => 'required_without:cover_letter_content|file|mimes:pdf|nullable',
-                'cover_letter_content' => 'required_without:cover_letter_file|string|nullable',
-            ]);
+            $job = Job::fetchJobsQuery($request->all())->first();
 
-            if ($validator->fails()) {
-                return $this->sendError($validator->errors(), 422);
+            if (!$job)
+            {
+                return $this->sendError('This job is not found! Please try again.', 404);
             }
 
-            $job = Job::select('users.name as employer_name', 'users.email as employer_email', 'job_listings.*')
-                ->where('job_listings.slug', $slug)
-                ->join('users', 'job_listings.employer_id', 'users.id')
-                ->first();
-
-            if (!$job) {
-                return $this->sendError('This job is not found! Please try again.');
+            if (Job::isJobClosed($job))
+            {
+                return $this->sendError('This job is closed! Please try other jobs.', 400);
             }
 
-            if (!$job->status) {
-                return $this->sendError('This job is not active! Please try again.');
+            if (Job::hasAlreadyApplied($job->id))
+            {
+                return $this->sendError('You have already applied for this job! Please try other jobs.', 400);
             }
 
-            if ($job->deadline && Carbon::parse($job->deadline)->isPast()) {
-                return $this->sendError('This job is closed! Please try other jobs.');
+            $validatedData = $validator->validated();
+            $validatedData['job_id'] = $job->id;
+            $validatedData['slug'] = Str::uuid();
+            $validatedData['employee_id'] = Auth::id();
+            $validatedData['cv'] = Job::storeFile($request, 'cv', 'cv');
+
+            if ($request->hasFile('cover_letter_file'))
+            {
+                $validatedData['cover_letter_file'] = Job::storeFile($request, 'cover_letter_file', 'cover_letter_file');
             }
 
-            // check if already applied
-            $checkIfAlreadyApplied = JobApplication::where('job_id', $job->id)
-                ->where('employee_id', Auth::User()->id)
-                ->first();
+            // Create new entry for job application
+            $jobApplication = JobApplication::create($validatedData);
 
-            if ($checkIfAlreadyApplied) {
-                return $this->sendError('You have already applied for this job! Please try other jobs.');
-            }
-
-            $cover_letter_file = NULL;
-            if ($request->cover_letter_file) {
-                if ($request->hasFile('cover_letter_file')) {
-                    $cover_letter_file = $request->file('cover_letter_file')->store('cover_letter_file', 'public');
-                }
-            }
-
-            $cv = NULL;
-            if ($request->cv) {
-                if ($request->hasFile('cv')) {
-                    $cv = $request->file('cv')->store('cv', 'public');
-                }
-            }
-
-            // create new entry for job application
-            $jobApplication = JobApplication::create([
-                'job_id' => $job->id,
-                'slug' => Str::uuid(),
-                'employee_id' => Auth::User()->id,
-                'cv' => $cv,
-                'cover_letter_file' => $cover_letter_file,
-                'cover_letter_content' => $request->cover_letter_content,
-                'experience' => $request->experience,
-                'skills' => $request->skills,
-            ]);
-
+            // Queue the email so that the API response doesn't take longer time.
             Mail::to($job->employer_email)
                 ->queue(new NewApplication($jobApplication, $job));
-            // added queue so that the api response doenst take longer time.
 
             DB::commit();
-            return $this->sendSuccess($request->all(), 'Job Application sent succesfully.', 200);
-        } catch (Exception $e) {
+
+            return $this->sendSuccess($validatedData, 'Job Application sent successfully.', 200);
+        }
+        catch (Exception $e)
+        {
             DB::rollBack();
-            return $this->sendError('Error something went wrong! Please try again.');
+            return $this->sendError('Error: Something went wrong! Please try again.', 500);
         }
     }
 }

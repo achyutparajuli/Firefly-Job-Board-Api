@@ -18,31 +18,23 @@ class JobController extends SendResponseController
 {
     public function index(Request $request)
     {
-        $keyword = $request->keyword; // we can use this seperately.
+        try
+        {
+            $request->merge(['authUserId' => Auth::User()->id]);
+            $jobs = Job::fetchJobsQuery($request->all())->get();
 
-        try {
-            $jobs = Job::select('job_listings.*')
-                ->addSelect(DB::raw('IF(deadline < NOW(), 1, 0) as expired'))
-                ->where(function ($query) use ($keyword) {
-                    if ($keyword != '') {
-                        $query->where('job_listings.title', 'LIKE', '%' . $keyword . '%');
-                        $query->orwhere('job_listings.company_name', 'LIKE', '%' . $keyword . '%');
-                        $query->orwhere('job_listings.location', 'LIKE', '%' . $keyword . '%');
-                    }
-                })
-                ->where('employer_id', Auth::User()->id)
-                ->withCount('application as total_applications')
-                ->orderBy('id', 'DESC')
-                ->get();
             return $this->sendSuccess($jobs, 'My Jobs List', 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function store(Request $request)
     {
-        try {
+        try
+        {
             // Validate the request data
             $validator = Validator::make($request->all(), [
                 'title' => ['required', 'string', 'max:70'],
@@ -54,32 +46,41 @@ class JobController extends SendResponseController
                 'keywords' => ['required', 'string'],
             ]);
 
-            if ($validator->fails()) {
+            if ($validator->fails())
+            {
                 return $this->sendError($validator->errors(), 422);
             }
 
-            $job = Job::create([
-                'slug' => Str::uuid(),
-                'title' => $request->title,
-                'company_name' => $request->company_name,
-                'location' => $request->location,
-                'description' => $request->description,
-                'instruction' => $request->instruction,
-                'deadline' => $request->deadline,
-                'salary' => $request->salary,
-                'keywords' => $request->keywords,
-                'employer_id' => Auth::User()->id
-            ]);
+            // add other optional field value on the validated data array
+            $validatedData = $validator->validated();
+            $validatedData['slug'] = Str::uuid();
+            $validatedData['employer_id'] = Auth::User()->id;
+            $validatedData['salary'] = $request->salary;
+
+            Job::create($validatedData);
 
             return $this->sendSuccess($request->all(), 'Job created succesfully', 201);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function update($slug, Request $request)
     {
-        try {
+        try
+        {
+            $job = Job::query()
+                ->where('slug', $slug)
+                ->where('employer_id', Auth::User()->id)
+                ->first();
+
+            if (!$job)
+            {
+                return $this->sendError('This job doesn`t exists! Please try again.');
+            }
+
             // Validate the request data
             $validator = Validator::make($request->all(), [
                 'title' => ['required', 'string', 'max:70'],
@@ -91,97 +92,111 @@ class JobController extends SendResponseController
                 'keywords' =>  ['required', 'string'],
             ]);
 
-            if ($validator->fails()) {
+            if ($validator->fails())
+            {
                 return $this->sendError($validator->errors(), 422);
             }
 
-            $job = Job::query()
-                ->where('slug', $slug)
-                ->where('employer_id', Auth::User()->id)
-                ->first();
+            // add other optional field value on the validated data array
+            $validatedData = $validator->validated();
+            $validatedData['salary'] = $request->salary;
 
-
-            if (!$job) {
-                return $this->sendError('This job doesn`t exists! Please try again.');
-            }
-
-            $job->update([
-                'title' => $request->title,
-                'company_name' => $request->company_name,
-                'location' => $request->location,
-                'description' => $request->description,
-                'instruction' => $request->instruction,
-                'keywords' => $request->keywords,
-                'deadline' => $request->deadline,
-                'salary' => $request->salary,
-            ]);
+            $job->update($validatedData);
 
             return $this->sendSuccess($request->all(), 'Job updated Sucesfully', 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function delete($slug)
     {
-        try {
+        try
+        {
             $job = Job::where('slug', $slug)->where('employer_id', Auth::User()->id)->first();
-
-            if (!$job) {
+            if (!$job)
+            {
                 return $this->sendError('This job is not found! Please try again.');
             }
 
             $job->delete();
             return $this->sendSuccess($job, 'Job Deleted Succesfully', 200);
-        } catch (Exception $e) {
+        }
+        catch (Exception $e)
+        {
+            return $this->sendError('Error something went wrong! Please try again.');
+        }
+    }
+
+    public function getJobApplications(Request $request)
+    {
+        try
+        {
+            $request->merge(['employer_id' => Auth::User()->id]);
+            $jobApplication = JobApplication::fetchJobsApplicationQuery($request->all())->get();
+
+            return $this->sendSuccess($jobApplication, 'My Job Applications List', 200);
+        }
+        catch (Exception $e)
+        {
             return $this->sendError('Error something went wrong! Please try again.');
         }
     }
 
     public function changeStatus(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'slug' => 'required|string',
+            'status' => 'required|string',
+            'remarks' => 'nullable|string',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->sendError($validator->errors(), 422);
+        }
+
         $slug = $request->slug;
+        $status = $request->status;
         $remarks = $request->remarks;
-        $status = $request->status; // status to be changed
-        try {
+
+        try
+        {
             DB::beginTransaction();
 
-            $validator = Validator::make($request->all(), [
-                'slug' => 'required|string',
-                'status' => 'required|string',
-            ]);
-
-            if ($validator->fails()) {
-                return $this->sendError($validator->errors(), 422);
-            }
-
-            $job = JobApplication::select('job_listings.*', 'employee.name as employee_name', 'employee.email as employee_email')
-                ->where('employer_id', Auth::User()->id)
-                ->where('job_applications.slug', $slug)
-                ->join('job_listings', 'job_applications.job_id', 'job_listings.id')
-                ->join('users as employee', 'job_applications.employee_id', 'employee.id')
+            $jobApplication = JobApplication::where('slug', $slug)
+                ->whereHas('job', function ($query)
+                {
+                    $query->where('employer_id', Auth::id());
+                })
+                ->with(['job', 'employee'])
                 ->first();
 
-            if (!$job) {
-                return $this->sendError('This job is not found! Please try again.');
+            if (!$jobApplication)
+            {
+                return $this->sendError('This job application is not found! Please try again.', 404);
             }
 
-            JobApplication::where('slug', $slug)
-                ->update([
-                    'status' => $status,
-                    'remarks' => $remarks
-                ]);
+            $jobApplication->update([
+                'status' => $status,
+                'remarks' => $remarks
+            ]);
 
             $when = now()->addMinutes(env("EMAIL_DELAY", 10));
 
-            Mail::to($job->employee_email)
-                ->later($when, new ApplicationStatus($job));
+            Mail::to($jobApplication->employee->email)
+                ->later($when, new ApplicationStatus($jobApplication));
 
             DB::commit();
-            return $this->sendSuccess($request->all(), 'Job updated succesfully.', 200);
-        } catch (Exception $e) {
+
+            return $this->sendSuccess($jobApplication->toArray(), 'Job application status updated successfully.', 200);
+        }
+        catch (Exception $e)
+        {
             DB::rollBack();
-            return $this->sendError('Error something went wrong! Please try again.');
+            return $this->sendError('Error: Something went wrong! Please try again.', 500);
         }
     }
 }

@@ -68,7 +68,6 @@ class RegisterTest extends TestCase
 
         $response = $this->postJson('/api/v1/register', $data);
 
-        // dd($response);
         $response->assertStatus(422)
             ->assertJsonValidationErrors([
                 'name',
