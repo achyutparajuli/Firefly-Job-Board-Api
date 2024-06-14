@@ -16,40 +16,39 @@ class LoginController extends SendResponseController
 {
     public function login(Request $request)
     {
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|string|email',
+            'password' => 'required|string',
+        ]);
+
+        if ($validator->fails())
+        {
+            return $this->sendError($validator->errors(), 422);
+        }
+
+        $credentials = $request->only('email', 'password');
+        $user = User::where('email', $credentials['email'])->first();
+
+        if (!$user || !Hash::check($credentials['password'], $user->password))
+        {
+            return $this->sendError('Invalid credentials.', 401);
+        }
+
+        if (!$user->email_verified_at)
+        {
+            return $this->sendError('Email not verified. Please verify your email.', 422);
+        }
+
+        if (!$user->status)
+        {
+            return $this->sendError('Account is inactive. Please contact the system admin.', 422);
+        }
+
         try
         {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|string',
-                'password' => 'required|string',
-            ]);
-
-            if ($validator->fails())
-            {
-                return $this->sendError($validator->errors()->first(), 422);
-            }
-
-            $credentials = $request->only('email', 'password');
-            $user = User::where('email', $credentials['email'])->first();
-
-            if (!$user || !Hash::check($credentials['password'], $user->password))
-            {
-                return $this->sendError('Invalid credentials.', 401);
-            }
-
-            if (!$user->email_verified_at)
-            {
-                return $this->sendError('Email not verified. Please verify your email.', 401);
-            }
-
-            if (!$user->status)
-            {
-                return $this->sendError('Account is inactive. Please contact the system admin.', 401);
-            }
-
             $token = $user->createToken($user->email)->accessToken;
 
-            $user->api_token = $token;
-            $user->save();
+            $user->update(['api_token' => $token]);
 
             $responseData = [
                 'name' => $user->name,
@@ -65,9 +64,10 @@ class LoginController extends SendResponseController
         }
         catch (Exception $e)
         {
-            return $this->sendError('Error: ' . $e->getMessage());
+            return $this->sendError('Error: ' . $e->getMessage(), 500);
         }
     }
+
 
 
     public function logout(Request $request)

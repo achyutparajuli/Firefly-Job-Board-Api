@@ -83,7 +83,6 @@ class UpdateJobTest extends TestCase
             'deadline' => now()->addDays(10)->toDateString(),
             'keywords' => 'PHP, Laravel, Developer',
         ]);
-
         // Assert the response
         $response->assertStatus(200);
 

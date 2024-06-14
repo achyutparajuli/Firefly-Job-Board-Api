@@ -87,9 +87,8 @@ class ChangeJobStatusTest extends TestCase
             'status' => 'approved',
             'remarks' => 'Application approved',
         ]);
-
         // Assert the response
-        $response->assertStatus(500);
+        $response->assertStatus(200);
     }
 
     public function test_update_my_jobs_with__valid_token_with_incomplete_inputs()
